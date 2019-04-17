@@ -101,6 +101,34 @@ def is_transient(dflc):
     
     return is_positive_sub and no_pointsource_counterpart and not_moving and no_ssobject
 
+def is_moving_obj(dflc):
+    
+    candidate = dflc.loc[0]
+
+    is_positive_sub = candidate['isdiffpos'] == 't'
+
+    if (candidate['distpsnr1'] is None) or (candidate['distpsnr1'] > 1.5):
+        no_pointsource_counterpart = True
+    else:
+        if candidate['sgscore1'] < 0.5:
+            no_pointsource_counterpart = True
+        else:
+            no_pointsource_counterpart = False
+
+    where_detected = (dflc['isdiffpos'] == 't') # nondetections will be None
+    if np.sum(where_detected) == 1:
+        moving = True
+    else:
+        moving = False
+    
+    no_prev_det = True
+    for cid in dflc.loc[1:,'candid']:
+        no_prev_det &= np.isnan(cid)
+    
+    no_ssobject = (candidate['ssdistnr'] is None) or (candidate['ssdistnr'] < 0) or (candidate['ssdistnr'] > 5)
+
+    return is_positive_sub and no_pointsource_counterpart and moving and no_prev_det and no_ssobject
+
 #Fetch transient packets from data
 def transient_packets(data_dir):
     transient_alerts = []
@@ -109,6 +137,14 @@ def transient_packets(data_dir):
         if is_transient(dflc):
             transient_alerts.append(packet)
     return transient_alerts
+
+def moving_obj_packets(data_dir):
+    moving_obj_alerts = []
+    for packet in filter(is_alert_pure,generate_dictionaries(data_dir)):
+        dflc = make_dataframe(packet)
+        if is_moving_obj(dflc):
+            moving_obj_alerts.append(packet)
+    return moving_obj_alerts
 
 #Plot lightcurve
 def plot_lightcurve(dflc, ax=None, days_ago=True):
@@ -128,14 +164,15 @@ def plot_lightcurve(dflc, ax=None, days_ago=True):
         # plot detections in this filter:
         w = (dflc.fid == fid) & ~dflc.magpsf.isnull()
         if np.sum(w):
-            plt.errorbar(t[w],dflc.loc[w,'magpsf'], dflc.loc[w,'sigmapsf'],fmt='.',color=color)
+            plt.errorbar(t[w],dflc.loc[w,'magpsf'], dflc.loc[w,'sigmapsf'],fmt='.',color=color,label='Observed')
         wnodet = (dflc.fid == fid) & dflc.magpsf.isnull()
         if np.sum(wnodet):
-            plt.scatter(t[wnodet],dflc.loc[wnodet,'diffmaglim'], marker='v',color=color,alpha=0.25)
+            plt.scatter(t[wnodet],dflc.loc[wnodet,'diffmaglim'], marker='v',color=color,alpha=0.25,label='Lim mag for non-obsv')
     
     plt.gca().invert_yaxis()
     plt.xlabel(xlabel)
     plt.ylabel('Magnitude')
+    plt.legend()
     plt.title(dflc.objectId)
 
 #Plot cutout images
@@ -180,10 +217,11 @@ if __name__=='__main__':
     parser.add_argument('--scorr_lim',type=float,help='SNR limit',default=5)
     parser.add_argument('--nbad_val',type=float,help='Value of nbad, that is the number of bad pixels',default=0)
     parser.add_argument('--fwhm_lim',type=float,help='FWHM limit',default=5)
-    parser.add_argument('--elong_lim',type=float,help='Elong limit',default=12)
+    parser.add_argument('--elong_lim',type=float,help='Elong limit',default=1.2)
     parser.add_argument('--absmagdiff_lim',type=float,help='Absolute of magdiff limit',default=0.1)
 
     args = parser.parse_args() 
-    for packet in transient_packets(args.data_dir):
-        show_all(packet)
+#    for packet in transient_packets(args.data_dir):
+    for packet in moving_obj_packets(args.data_dir):   
+       show_all(packet)
             

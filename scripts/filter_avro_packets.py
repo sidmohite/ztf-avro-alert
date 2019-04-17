@@ -44,6 +44,7 @@ def is_alert_pure(packet):
     pure &= packet['candidate']['fwhm'] <= args.fwhm_lim
     pure &= packet['candidate']['elong'] <= args.elong_lim
     pure &= np.abs(packet['candidate']['magdiff']) <= args.absmagdiff_lim
+    pure &= packet['candidate']['ndethist'] == 1
     return pure
 
 def filter_packets(data_dir):
@@ -60,12 +61,12 @@ if __name__=='__main__':
     parser.add_argument('--scorr_lim',type=float,help='SNR limit',default=5)
     parser.add_argument('--nbad_val',type=float,help='Value of nbad, that is the number of bad pixels',default=0)
     parser.add_argument('--fwhm_lim',type=float,help='FWHM limit',default=5)
-    parser.add_argument('--elong_lim',type=float,help='Elong limit',default=12)
+    parser.add_argument('--elong_lim',type=float,help='Elong limit',default=1.2)
     parser.add_argument('--absmagdiff_lim',type=float,help='Absolute of magdiff limit',default=0.1)
     parser.add_argument('--output_file',help='Output file to store filtered alerts.The file is stored in the data directory',default='filtered_alerts.npy')
     args = parser.parse_args()
     filtered_alerts = filter_packets(args.data_dir)
     print('Saving {} filtered packets'.format(len(filtered_alerts)))
-    np.save(args.data_dir+'/'+args.output_file,filtered_alerts)
+    np.save(str(args.data_dir)+'/'+str(args.output_file),filtered_alerts)
 
 
