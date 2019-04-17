@@ -122,8 +122,13 @@ def is_moving_obj(dflc):
         moving = False
     
     no_prev_det = True
-    for cid in dflc.loc[1:,'candid']:
-        no_prev_det &= np.isnan(cid)
+    nodet = dflc.loc[1:,:].magpsf.isnull()
+    if np.sum(nodet):
+        no_prev_det = True
+    elif len(dflc.index == 1):
+        no_prev_det = True
+    else:
+        no_prev_det = False
     
     no_ssobject = (candidate['ssdistnr'] is None) or (candidate['ssdistnr'] < 0) or (candidate['ssdistnr'] > 5)
 
